@@ -1,0 +1,5 @@
+package hospital
+
+func Main() {
+
+}

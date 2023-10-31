@@ -1,0 +1,28 @@
+syntax = "proto3";
+package hospital;
+option go_package = "github.com/LysetsDal/hospital_sec/proto";
+
+service Hosptal {
+    rpc SendToHospital(Message) returns (Message) {}
+    rpc SendListToHospital(List) returns (List) {}
+}
+
+service Client {
+    rpc SendToPeer(Message) returns (Message) {}
+}
+
+message Message {
+    string type = 1;
+    string ip_sender = 2;
+    optional string ip_target = 3;
+    string payload = 4;
+    optional int32 value = 5;
+}
+
+message List {
+    string type = 1;
+    string ip_sender = 2;
+    optional string ip_target = 3;
+    repeated string s_list = 4;
+    repeated int32 i_list = 5;
+}
