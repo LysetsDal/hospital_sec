@@ -1,6 +1,10 @@
 package hospital
 
-import "fmt"
+import (
+	"fmt"
+
+	
+)
 
 func Main() {
 	fmt.Println("Hej")

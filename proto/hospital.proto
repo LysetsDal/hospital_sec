@@ -7,7 +7,7 @@ service Hospital {
     rpc SendListToHospital(HospitalList) returns (HospitalList) {}
 }
 
-service Client {
+service Peer {
     rpc SendToPeer(ClientMessage) returns (ClientMessage) {}
 }
 
