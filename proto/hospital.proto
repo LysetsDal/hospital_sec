@@ -2,7 +2,7 @@ syntax = "proto3";
 package hospital;
 option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
-service Hosptal {
+service Hospital {
     rpc SendToHospital(HospitalMessage) returns (HospitalMessage) {}
     rpc SendListToHospital(HospitalList) returns (HospitalList) {}
 }
@@ -37,4 +37,5 @@ message HospitalList {
 
 message Test {
     string test = 1;
+    bool works = 2;
 }
