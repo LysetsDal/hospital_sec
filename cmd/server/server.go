@@ -1,5 +1,7 @@
 package hospital
 
-func Main() {
+import "fmt"
 
+func Main() {
+	fmt.Println("Hej")
 }
