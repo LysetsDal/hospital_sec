@@ -3,15 +3,15 @@ package hospital;
 option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
 service Hosptal {
-    rpc SendToHospital(Message) returns (Message) {}
-    rpc SendListToHospital(List) returns (List) {}
+    rpc SendToHospital(HospitalMessage) returns (HospitalMessage) {}
+    rpc SendListToHospital(HospitalList) returns (HospitalList) {}
 }
 
 service Client {
-    rpc SendToPeer(Message) returns (Message) {}
+    rpc SendToPeer(ClientMessage) returns (ClientMessage) {}
 }
 
-message Message {
+message HospitalMessage {
     string type = 1;
     string ip_sender = 2;
     optional string ip_target = 3;
@@ -19,10 +19,22 @@ message Message {
     optional int32 value = 5;
 }
 
-message List {
+message ClientMessage {
+    string type = 1;
+    string ip_sender = 2;
+    optional string ip_target = 3;
+    string payload = 4;
+    optional int32 value = 5;
+}
+
+message HospitalList {
     string type = 1;
     string ip_sender = 2;
     optional string ip_target = 3;
     repeated string s_list = 4;
     repeated int32 i_list = 5;
+}
+
+message Test {
+    string test = 1;
 }
