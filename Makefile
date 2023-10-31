@@ -1,5 +1,5 @@
 srv: 
-	go run cmd/server/server.go
+	go run cmd/server/main.go
 
 proto:
 	protoc --go_out=. --go-grpc_out=. proto/*.proto
