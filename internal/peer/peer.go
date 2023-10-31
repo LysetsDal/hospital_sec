@@ -7,13 +7,13 @@ import (
 )
 
 type IPeer interface {
-	SendToPeer(context.Context, *pb.ClientMessage) (context.Context, *pb.ClientMessage)
+	SendToPeer(context.Context, *pb.ClientMessage) (*pb.ClientMessage, error)
+	Ping(context.Context, *pb.PeerPing) (*pb.PingEcho)
 }
 
 type Peer struct {
-	pb.ClientServer
+	pb.PeerServer
 }
-
 
 func NewPeerServer() *Peer {
 	return &Peer{}

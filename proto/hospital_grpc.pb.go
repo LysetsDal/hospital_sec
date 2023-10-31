@@ -27,8 +27,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HospitalClient interface {
-	SendToHospital(ctx context.Context, in *HospitalMessage, opts ...grpc.CallOption) (*HospitalMessage, error)
-	SendListToHospital(ctx context.Context, in *HospitalList, opts ...grpc.CallOption) (*HospitalList, error)
+	SendToHospital(ctx context.Context, in *HospitalRequest, opts ...grpc.CallOption) (*HospitalResponse, error)
+	SendListToHospital(ctx context.Context, in *HospitalListReq, opts ...grpc.CallOption) (*HospitalListRes, error)
 }
 
 type hospitalClient struct {
@@ -39,8 +39,8 @@ func NewHospitalClient(cc grpc.ClientConnInterface) HospitalClient {
 	return &hospitalClient{cc}
 }
 
-func (c *hospitalClient) SendToHospital(ctx context.Context, in *HospitalMessage, opts ...grpc.CallOption) (*HospitalMessage, error) {
-	out := new(HospitalMessage)
+func (c *hospitalClient) SendToHospital(ctx context.Context, in *HospitalRequest, opts ...grpc.CallOption) (*HospitalResponse, error) {
+	out := new(HospitalResponse)
 	err := c.cc.Invoke(ctx, Hospital_SendToHospital_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -48,8 +48,8 @@ func (c *hospitalClient) SendToHospital(ctx context.Context, in *HospitalMessage
 	return out, nil
 }
 
-func (c *hospitalClient) SendListToHospital(ctx context.Context, in *HospitalList, opts ...grpc.CallOption) (*HospitalList, error) {
-	out := new(HospitalList)
+func (c *hospitalClient) SendListToHospital(ctx context.Context, in *HospitalListReq, opts ...grpc.CallOption) (*HospitalListRes, error) {
+	out := new(HospitalListRes)
 	err := c.cc.Invoke(ctx, Hospital_SendListToHospital_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -61,8 +61,8 @@ func (c *hospitalClient) SendListToHospital(ctx context.Context, in *HospitalLis
 // All implementations must embed UnimplementedHospitalServer
 // for forward compatibility
 type HospitalServer interface {
-	SendToHospital(context.Context, *HospitalMessage) (*HospitalMessage, error)
-	SendListToHospital(context.Context, *HospitalList) (*HospitalList, error)
+	SendToHospital(context.Context, *HospitalRequest) (*HospitalResponse, error)
+	SendListToHospital(context.Context, *HospitalListReq) (*HospitalListRes, error)
 	mustEmbedUnimplementedHospitalServer()
 }
 
@@ -70,10 +70,10 @@ type HospitalServer interface {
 type UnimplementedHospitalServer struct {
 }
 
-func (UnimplementedHospitalServer) SendToHospital(context.Context, *HospitalMessage) (*HospitalMessage, error) {
+func (UnimplementedHospitalServer) SendToHospital(context.Context, *HospitalRequest) (*HospitalResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendToHospital not implemented")
 }
-func (UnimplementedHospitalServer) SendListToHospital(context.Context, *HospitalList) (*HospitalList, error) {
+func (UnimplementedHospitalServer) SendListToHospital(context.Context, *HospitalListReq) (*HospitalListRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendListToHospital not implemented")
 }
 func (UnimplementedHospitalServer) mustEmbedUnimplementedHospitalServer() {}
@@ -90,7 +90,7 @@ func RegisterHospitalServer(s grpc.ServiceRegistrar, srv HospitalServer) {
 }
 
 func _Hospital_SendToHospital_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HospitalMessage)
+	in := new(HospitalRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -102,13 +102,13 @@ func _Hospital_SendToHospital_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: Hospital_SendToHospital_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HospitalServer).SendToHospital(ctx, req.(*HospitalMessage))
+		return srv.(HospitalServer).SendToHospital(ctx, req.(*HospitalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Hospital_SendListToHospital_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HospitalList)
+	in := new(HospitalListReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func _Hospital_SendListToHospital_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: Hospital_SendListToHospital_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HospitalServer).SendListToHospital(ctx, req.(*HospitalList))
+		return srv.(HospitalServer).SendListToHospital(ctx, req.(*HospitalListReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -147,6 +147,7 @@ var Hospital_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	Peer_SendToPeer_FullMethodName = "/hospital.Peer/SendToPeer"
+	Peer_Ping_FullMethodName       = "/hospital.Peer/Ping"
 )
 
 // PeerClient is the client API for Peer service.
@@ -154,6 +155,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PeerClient interface {
 	SendToPeer(ctx context.Context, in *ClientMessage, opts ...grpc.CallOption) (*ClientMessage, error)
+	Ping(ctx context.Context, in *PeerPing, opts ...grpc.CallOption) (*PingEcho, error)
 }
 
 type peerClient struct {
@@ -173,11 +175,21 @@ func (c *peerClient) SendToPeer(ctx context.Context, in *ClientMessage, opts ...
 	return out, nil
 }
 
+func (c *peerClient) Ping(ctx context.Context, in *PeerPing, opts ...grpc.CallOption) (*PingEcho, error) {
+	out := new(PingEcho)
+	err := c.cc.Invoke(ctx, Peer_Ping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PeerServer is the server API for Peer service.
 // All implementations must embed UnimplementedPeerServer
 // for forward compatibility
 type PeerServer interface {
 	SendToPeer(context.Context, *ClientMessage) (*ClientMessage, error)
+	Ping(context.Context, *PeerPing) (*PingEcho, error)
 	mustEmbedUnimplementedPeerServer()
 }
 
@@ -187,6 +199,9 @@ type UnimplementedPeerServer struct {
 
 func (UnimplementedPeerServer) SendToPeer(context.Context, *ClientMessage) (*ClientMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendToPeer not implemented")
+}
+func (UnimplementedPeerServer) Ping(context.Context, *PeerPing) (*PingEcho, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedPeerServer) mustEmbedUnimplementedPeerServer() {}
 
@@ -219,6 +234,24 @@ func _Peer_SendToPeer_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Peer_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PeerPing)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeerServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Peer_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeerServer).Ping(ctx, req.(*PeerPing))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Peer_ServiceDesc is the grpc.ServiceDesc for Peer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +262,10 @@ var Peer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendToPeer",
 			Handler:    _Peer_SendToPeer_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _Peer_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

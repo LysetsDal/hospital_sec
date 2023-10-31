@@ -3,39 +3,52 @@ package hospital;
 option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
 service Hospital {
-    rpc SendToHospital(HospitalMessage) returns (HospitalMessage) {}
-    rpc SendListToHospital(HospitalList) returns (HospitalList) {}
+    rpc SendToHospital(HospitalRequest) returns (HospitalResponse) {}
+    rpc SendListToHospital(HospitalListReq) returns (HospitalListRes) {}
 }
 
 service Peer {
     rpc SendToPeer(ClientMessage) returns (ClientMessage) {}
+    rpc Ping(PeerPing) returns (PingEcho) {}
 }
 
-message HospitalMessage {
-    string type = 1;
-    string ip_sender = 2;
-    optional string ip_target = 3;
-    string payload = 4;
-    optional int32 value = 5;
+message HospitalRequest {
+    string sourceIP = 1;
+    string payload = 2;
+    optional int32 value = 3;
+}
+
+message HospitalResponse {
+    string sourceIP = 1;
+    string payload = 2;
 }
 
 message ClientMessage {
-    string type = 1;
-    string ip_sender = 2;
-    optional string ip_target = 3;
-    string payload = 4;
-    optional int32 value = 5;
+    string sourceIP = 1;
+    string payload = 2;
+    optional int32 value = 3;
 }
 
-message HospitalList {
-    string type = 1;
-    string ip_sender = 2;
-    optional string ip_target = 3;
-    repeated string s_list = 4;
-    repeated int32 i_list = 5;
+message HospitalListReq {
+    string sourceIP = 1;
+    repeated string s_list = 2;
 }
 
-message Test {
-    string test = 1;
-    bool works = 2;
+message HospitalListRes {
+    string sourceIP = 1;
+    repeated string s_list = 2;
+    optional string err = 3;
+}
+
+message PeerPing {
+    string sourceIP = 1;
+    string destinationIP = 2;
+    optional string payload = 3;
+
+}
+
+message PingEcho {
+    string sourceIP = 1;
+    optional string payload = 2;
+
 }

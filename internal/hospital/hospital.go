@@ -7,8 +7,8 @@ import (
 )
 
 type IHospital interface {
-	SendToHospital(context.Context, *pb.HospitalMessage) (*pb.HospitalMessage) 
-    SendListToHospital(context.Context, *pb.HospitalList) (*pb.HospitalList) 
+	SendToHospital(context.Context, *pb.HospitalRequest) (*pb.HospitalResponse) 
+    SendListToHospital(context.Context, *pb.HospitalListReq) (*pb.HospitalListRes) 
 }
 
 type Hospital struct {
@@ -16,6 +16,6 @@ type Hospital struct {
 }
 
 
-func NewHospitalServer() *Hospital {
+func NewServer() *Hospital {
 	return &Hospital{}
 }
