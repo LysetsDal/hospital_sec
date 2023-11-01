@@ -12,43 +12,48 @@ service Peer {
     rpc Ping(PeerPing) returns (PingEcho) {}
 }
 
+message Header {
+    string from = 1;
+    optional string to = 2;
+}
+
 message HospitalRequest {
-    string sourceIP = 1;
-    string payload = 2;
+    Header header = 1;
     optional int32 value = 3;
+
 }
 
 message HospitalResponse {
-    string sourceIP = 1;
-    string payload = 2;
+    Header header = 1;
+    optional string payload = 3;
+
 }
 
 message ClientMessage {
-    string sourceIP = 1;
-    string payload = 2;
-    optional int32 value = 3;
+    Header header = 1;
+    optional string payload = 3;
+
 }
 
 message HospitalListReq {
-    string sourceIP = 1;
+    Header header = 1;
     repeated string s_list = 2;
 }
 
 message HospitalListRes {
-    string sourceIP = 1;
+    Header header = 1;
     repeated string s_list = 2;
     optional string err = 3;
 }
 
 message PeerPing {
-    string sourceIP = 1;
-    string destinationIP = 2;
+    Header header = 1;
     optional string payload = 3;
 
 }
 
 message PingEcho {
-    string sourceIP = 1;
+    Header header = 1;
     optional string payload = 2;
 
 }
