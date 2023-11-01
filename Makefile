@@ -1,7 +1,7 @@
 .PHONY: proto protoc
 
 srv: 
-	go run cmd/server/main.go
+	go run cmd/server/*
 
 proto:
 	protoc -Iproto/ --go_out=. --go_opt=module=github.com/LysetsDal/hospital_sec \

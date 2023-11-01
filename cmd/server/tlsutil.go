@@ -1,13 +1,15 @@
-package hospital
+package main
 
 import (
-    "google.golang.org/grpc/credentials"
+	"fmt"
+
+	"google.golang.org/grpc/credentials"
 )
 
-func loadTLSConfig(cert string, key string) (credentials.TransportCredentials, error) {
+func LoadTLSConfig(cert string, key string) (credentials.TransportCredentials, error) {
     keyPair, err := credentials.NewServerTLSFromFile(cert, key)
     if err != nil {
-        return nil, err
+		return nil, fmt.Errorf("error starting tcp listener: %v", err)
     }
     return keyPair, nil
 }

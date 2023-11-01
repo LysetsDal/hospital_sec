@@ -1,4 +1,4 @@
-package hospital
+package main
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"net"
 	"os"
 
-	"google.golang.org/grpc"
 	"github.com/LysetsDal/hospital_sec/config"
+	"google.golang.org/grpc"
 
 	hospitalServer "github.com/LysetsDal/hospital_sec/internal/hospital"
 	pb "github.com/LysetsDal/hospital_sec/proto"
@@ -16,12 +16,11 @@ import (
 var (
 	host = config.ServerHost
 	port = config.ServerPort
-	crt = config.TLScert
-	key = config.TLSkey
+	crt  = config.TLScert
+	key  = config.TLSkey
 )
 
-
-func Main() {
+func main() {
 	addr := fmt.Sprintf("%s:%s", host, port)
 
 	lis, err := net.Listen("tcp", addr)
@@ -30,11 +29,11 @@ func Main() {
 		os.Exit(1)
 	}
 
-	keyPair, err := loadTLSConfig(crt, key)
-    if err != nil {
-        log.Println("error loading TLS config: ", err)
-        os.Exit(1)
-    }
+	keyPair, err := LoadTLSConfig(crt, key)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 
 	log.Println("tcp listener started on port: ", port)
 	grpcServer := grpc.NewServer(grpc.Creds(keyPair))
@@ -46,6 +45,5 @@ func Main() {
 		log.Println("error serving grpc: ", err)
 		os.Exit(1)
 	}
-
 
 }
