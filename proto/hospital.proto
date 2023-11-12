@@ -4,56 +4,34 @@ option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
 service Hospital {
     rpc SendToHospital(HospitalRequest) returns (HospitalResponse) {}
-    rpc SendListToHospital(HospitalListReq) returns (HospitalListRes) {}
 }
 
 service Peer {
     rpc SendToPeer(ClientMessage) returns (ClientMessage) {}
-    rpc Ping(PeerPing) returns (PingEcho) {}
+    rpc Ping(PeerPing) returns (PeerPing) {}
 }
 
-message Header {
-    string from = 1;
-    optional string to = 2;
-}
 
 message HospitalRequest {
-    Header header = 1;
-    optional int32 value = 3;
+    string from = 1;
+    optional string payload = 2;
 
 }
 
 message HospitalResponse {
-    Header header = 1;
-    optional string payload = 3;
+    string from = 1;
+    optional string payload = 2;
 
 }
 
 message ClientMessage {
-    Header header = 1;
-    optional string payload = 3;
+    string from = 1;
+    optional string payload = 2;
 
-}
-
-message HospitalListReq {
-    Header header = 1;
-    repeated string s_list = 2;
-}
-
-message HospitalListRes {
-    Header header = 1;
-    repeated string s_list = 2;
-    optional string err = 3;
 }
 
 message PeerPing {
-    Header header = 1;
-    optional string payload = 3;
-
-}
-
-message PingEcho {
-    Header header = 1;
+    string from = 1;
     optional string payload = 2;
 
 }
