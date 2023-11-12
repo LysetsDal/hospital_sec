@@ -14,24 +14,24 @@ service Peer {
 
 message HospitalRequest {
     string from = 1;
-    optional string payload = 2;
+    string payload = 2;
 
 }
 
 message HospitalResponse {
     string from = 1;
-    optional string payload = 2;
+    string payload = 2;
 
 }
 
 message ClientMessage {
     string from = 1;
-    optional string payload = 2;
+    string payload = 2;
 
 }
 
 message PeerPing {
     string from = 1;
-    optional string payload = 2;
+    string payload = 2;
 
 }

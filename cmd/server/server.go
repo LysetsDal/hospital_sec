@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -37,8 +38,14 @@ func NewServer(host string, port string) *Hospital {
 	}
 }
 
-func (h *Hospital) SendToHospital(*pb.HospitalRequest) *pb.HospitalResponse {
-	return nil
+func (h *Hospital) SendToHospital(ctx context.Context, in *pb.HospitalRequest) (*pb.HospitalResponse, error) {
+	msg := fmt.Sprintf("Message received from: %s", in.Payload)
+	res := &pb.HospitalResponse{
+		From: h.ListenAddr,
+		Payload: msg,
+	}
+	
+	return res, nil
 }
 
 func (h *Hospital) MustStart() error {
@@ -65,6 +72,6 @@ func (h *Hospital) MustStart() error {
 }
 
 func main() {
-	s := NewServer("localhost", "8082")
+	s := NewServer("localhost", "5000")
 	log.Fatal(s.MustStart())
 }
