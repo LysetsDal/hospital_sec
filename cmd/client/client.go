@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"strings"
 
 	util "github.com/LysetsDal/hospital_sec/cmd/utils"
 	pb "github.com/LysetsDal/hospital_sec/proto"
@@ -27,9 +23,10 @@ var (
 type Peer struct {
 	pb.UnimplementedPeerServer
 	ListenAddr string
+	HosConn    grpc.ClientConn
 	UUID       string
 
-	Peers map[uuid.UUID]pb.PeerClient
+	Peers map[string]pb.PeerClient
 
 	MessageCh chan *util.Message
 	AddPeer   chan *Peer
@@ -40,7 +37,7 @@ func NewPeer(host string, port string) *Peer {
 	return &Peer{
 		ListenAddr: fmt.Sprintf("%s:%s", host, port),
 		UUID:       uuid.New().String(),
-		Peers:      make(map[uuid.UUID]pb.PeerClient),
+		Peers:      make(map[string]pb.PeerClient),
 		AddPeer:    make(chan *Peer, 10),
 		DelPeer:    make(chan *Peer),
 	}
@@ -62,44 +59,19 @@ func (p *Peer) MustStart(certFile string, keyFile string) error {
 		panic(err)
 	}
 
+
 	fmt.Println("Starting new Peer on:", p.ListenAddr)
 	return grpcServer.Serve(lis)
 }
 
 func main() {
 	flag.Parse()
-	peer := NewPeer(host, *port)
+	p := NewPeer(host, *port)
 
-	log.Fatal(peer.MustStart(*certFile, *keyFile))
+	log.Fatal(p.MustStart(*certFile, *keyFile))
 
 }
 
-func (p *Peer) Loop() {
-	// reader := bufio.NewReader(os.Stdin)
-	for {
-		text := promptInput("Enter Message: \n")
+func (p *Peer) handleMessage(msg *util.Message) {
 
-		switch strings.TrimSpace(text) {
-		case "send":
-			text:= promptInput("Enter text: \n") 
-			msg := &pb.ClientMessage{
-				From: p.ListenAddr,
-				Payload: text,
-			}
-
-		}
-	}
-}
-
-func (p *Peer) SendToPeer(ctx context.Context, req *pb.ClientMessage) (*pb.ClientResponse){
-	fmt.Printf("Received message from (%s): %s\n", req.From, req.GetPayload())
-	return &pb.MessageRes{Res: "Message received"}, nil
-}
-
-
-func promptInput(prompt string) string {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print(prompt)
-	input, _ := reader.ReadString('\n')
-	return strings.TrimSpace(input)
 }

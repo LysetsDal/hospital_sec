@@ -38,16 +38,6 @@ func NewServer(host string, port string) *Hospital {
 	}
 }
 
-func (h *Hospital) SendToHospital(ctx context.Context, in *pb.HospitalRequest) (*pb.HospitalResponse, error) {
-	msg := fmt.Sprintf("Message received from: %s", in.Payload)
-	res := &pb.HospitalResponse{
-		From: h.ListenAddr,
-		Payload: msg,
-	}
-	
-	return res, nil
-}
-
 func (h *Hospital) MustStart() error {
 	keyPair, err := credentials.NewServerTLSFromFile(cert, key)
 	if err != nil {
@@ -74,4 +64,13 @@ func (h *Hospital) MustStart() error {
 func main() {
 	s := NewServer("localhost", "5000")
 	log.Fatal(s.MustStart())
+}
+
+func (h *Hospital) SendToHospital(ctx context.Context, in *pb.HospitalMessage) (*pb.Empty, error) {
+	fmt.Sprintf("Message received from: %s", in.Payload)
+	return nil
+}
+
+func (h *Hospital) ReceiveFromHospital(ctx context.Context, in *pb.Empty) (*pb.HospitalMessage, error) {
+	return nil
 }

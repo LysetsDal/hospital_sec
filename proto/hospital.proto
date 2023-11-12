@@ -2,36 +2,31 @@ syntax = "proto3";
 package hospital;
 option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
-service Hospital {
-    rpc SendToHospital(HospitalRequest) returns (HospitalResponse) {}
-}
-
+  
 service Peer {
-    rpc SendToPeer(ClientMessage) returns (ClientMessage) {}
-    rpc Ping(PeerPing) returns (PeerPing) {}
+  // Define RPC methods for communication between peers
+  rpc ReceiveMessageFromPeer(Empty) returns (PeerMessage);
+}
+  
+service Hospital {
+  // Define RPC methods for communication with the hospital
+  rpc SendToHospital(PeerMessage) returns (Empty);
+  rpc ReceiveFromHospital(Empty) returns (HospitalMessage);
 }
 
-
-message HospitalRequest {
-    string from = 1;
-    string payload = 2;
-
-}
-
-message HospitalResponse {
-    string from = 1;
-    string payload = 2;
+message Empty {
 
 }
 
-message ClientMessage {
-    string from = 1;
-    string payload = 2;
-
+message PeerMessage {
+  // Define fields for the message exchanged between peers
+  string from_peer = 1;
+  string to_peer = 2;
+  string payload = 3;
 }
-
-message PeerPing {
-    string from = 1;
-    string payload = 2;
-
+  
+message HospitalMessage {
+  // Define fields for messages exchanged with the hospital
+  string from_peer = 1;
+  string payload = 2;
 }

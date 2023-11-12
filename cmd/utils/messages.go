@@ -1,7 +1,13 @@
 package util
 
+
 type Message struct {
-	From string
+	Payload any
+	From    string
+}
+
+type BroadcastTo struct {
+	To      []string
 	Payload any
 }
 
@@ -10,4 +16,23 @@ func NewMessage(from string, payload any) *Message {
 		From:    from,
 		Payload: payload,
 	}
+}
+
+type Handshake struct {
+	Version     string
+	ListenAddr  string
+}
+
+type MessagePeerList struct {
+	Peers []string
+}
+
+type MessageEncDeck struct {
+	Deck [][]byte
+}
+
+type MessageReady struct{}
+
+func (msg MessageReady) String() string {
+	return "MSG: READY"
 }
