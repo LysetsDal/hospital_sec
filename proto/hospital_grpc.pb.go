@@ -19,91 +19,202 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Peer_ReceiveMessageFromPeer_FullMethodName = "/hospital.Peer/ReceiveMessageFromPeer"
+	Peer2Peer_SendMessageToPeer_FullMethodName   = "/hospital.Peer2Peer/SendMessageToPeer"
+	Peer2Peer_InitiateSecretShare_FullMethodName = "/hospital.Peer2Peer/InitiateSecretShare"
+	Peer2Peer_SendSecretToPeer_FullMethodName    = "/hospital.Peer2Peer/SendSecretToPeer"
+	Peer2Peer_GetSecretFromPeer_FullMethodName   = "/hospital.Peer2Peer/GetSecretFromPeer"
 )
 
-// PeerClient is the client API for Peer service.
+// Peer2PeerClient is the client API for Peer2Peer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type PeerClient interface {
+type Peer2PeerClient interface {
 	// Define RPC methods for communication between peers
-	ReceiveMessageFromPeer(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*PeerMessage, error)
+	SendMessageToPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*PeerReply, error)
+	InitiateSecretShare(ctx context.Context, in *SecretShare, opts ...grpc.CallOption) (*SecretReply, error)
+	SendSecretToPeer(ctx context.Context, in *SecretShare, opts ...grpc.CallOption) (*SecretReply, error)
+	GetSecretFromPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*SecretShare, error)
 }
 
-type peerClient struct {
+type peer2PeerClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewPeerClient(cc grpc.ClientConnInterface) PeerClient {
-	return &peerClient{cc}
+func NewPeer2PeerClient(cc grpc.ClientConnInterface) Peer2PeerClient {
+	return &peer2PeerClient{cc}
 }
 
-func (c *peerClient) ReceiveMessageFromPeer(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*PeerMessage, error) {
-	out := new(PeerMessage)
-	err := c.cc.Invoke(ctx, Peer_ReceiveMessageFromPeer_FullMethodName, in, out, opts...)
+func (c *peer2PeerClient) SendMessageToPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*PeerReply, error) {
+	out := new(PeerReply)
+	err := c.cc.Invoke(ctx, Peer2Peer_SendMessageToPeer_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// PeerServer is the server API for Peer service.
-// All implementations must embed UnimplementedPeerServer
+func (c *peer2PeerClient) InitiateSecretShare(ctx context.Context, in *SecretShare, opts ...grpc.CallOption) (*SecretReply, error) {
+	out := new(SecretReply)
+	err := c.cc.Invoke(ctx, Peer2Peer_InitiateSecretShare_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *peer2PeerClient) SendSecretToPeer(ctx context.Context, in *SecretShare, opts ...grpc.CallOption) (*SecretReply, error) {
+	out := new(SecretReply)
+	err := c.cc.Invoke(ctx, Peer2Peer_SendSecretToPeer_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *peer2PeerClient) GetSecretFromPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*SecretShare, error) {
+	out := new(SecretShare)
+	err := c.cc.Invoke(ctx, Peer2Peer_GetSecretFromPeer_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Peer2PeerServer is the server API for Peer2Peer service.
+// All implementations must embed UnimplementedPeer2PeerServer
 // for forward compatibility
-type PeerServer interface {
+type Peer2PeerServer interface {
 	// Define RPC methods for communication between peers
-	ReceiveMessageFromPeer(context.Context, *Empty) (*PeerMessage, error)
-	mustEmbedUnimplementedPeerServer()
+	SendMessageToPeer(context.Context, *PeerRequest) (*PeerReply, error)
+	InitiateSecretShare(context.Context, *SecretShare) (*SecretReply, error)
+	SendSecretToPeer(context.Context, *SecretShare) (*SecretReply, error)
+	GetSecretFromPeer(context.Context, *PeerRequest) (*SecretShare, error)
+	mustEmbedUnimplementedPeer2PeerServer()
 }
 
-// UnimplementedPeerServer must be embedded to have forward compatible implementations.
-type UnimplementedPeerServer struct {
+// UnimplementedPeer2PeerServer must be embedded to have forward compatible implementations.
+type UnimplementedPeer2PeerServer struct {
 }
 
-func (UnimplementedPeerServer) ReceiveMessageFromPeer(context.Context, *Empty) (*PeerMessage, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReceiveMessageFromPeer not implemented")
+func (UnimplementedPeer2PeerServer) SendMessageToPeer(context.Context, *PeerRequest) (*PeerReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessageToPeer not implemented")
 }
-func (UnimplementedPeerServer) mustEmbedUnimplementedPeerServer() {}
+func (UnimplementedPeer2PeerServer) InitiateSecretShare(context.Context, *SecretShare) (*SecretReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitiateSecretShare not implemented")
+}
+func (UnimplementedPeer2PeerServer) SendSecretToPeer(context.Context, *SecretShare) (*SecretReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendSecretToPeer not implemented")
+}
+func (UnimplementedPeer2PeerServer) GetSecretFromPeer(context.Context, *PeerRequest) (*SecretShare, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSecretFromPeer not implemented")
+}
+func (UnimplementedPeer2PeerServer) mustEmbedUnimplementedPeer2PeerServer() {}
 
-// UnsafePeerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to PeerServer will
+// UnsafePeer2PeerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to Peer2PeerServer will
 // result in compilation errors.
-type UnsafePeerServer interface {
-	mustEmbedUnimplementedPeerServer()
+type UnsafePeer2PeerServer interface {
+	mustEmbedUnimplementedPeer2PeerServer()
 }
 
-func RegisterPeerServer(s grpc.ServiceRegistrar, srv PeerServer) {
-	s.RegisterService(&Peer_ServiceDesc, srv)
+func RegisterPeer2PeerServer(s grpc.ServiceRegistrar, srv Peer2PeerServer) {
+	s.RegisterService(&Peer2Peer_ServiceDesc, srv)
 }
 
-func _Peer_ReceiveMessageFromPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+func _Peer2Peer_SendMessageToPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PeerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PeerServer).ReceiveMessageFromPeer(ctx, in)
+		return srv.(Peer2PeerServer).SendMessageToPeer(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Peer_ReceiveMessageFromPeer_FullMethodName,
+		FullMethod: Peer2Peer_SendMessageToPeer_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PeerServer).ReceiveMessageFromPeer(ctx, req.(*Empty))
+		return srv.(Peer2PeerServer).SendMessageToPeer(ctx, req.(*PeerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Peer_ServiceDesc is the grpc.ServiceDesc for Peer service.
+func _Peer2Peer_InitiateSecretShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretShare)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(Peer2PeerServer).InitiateSecretShare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Peer2Peer_InitiateSecretShare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(Peer2PeerServer).InitiateSecretShare(ctx, req.(*SecretShare))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Peer2Peer_SendSecretToPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretShare)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(Peer2PeerServer).SendSecretToPeer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Peer2Peer_SendSecretToPeer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(Peer2PeerServer).SendSecretToPeer(ctx, req.(*SecretShare))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Peer2Peer_GetSecretFromPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PeerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(Peer2PeerServer).GetSecretFromPeer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Peer2Peer_GetSecretFromPeer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(Peer2PeerServer).GetSecretFromPeer(ctx, req.(*PeerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Peer2Peer_ServiceDesc is the grpc.ServiceDesc for Peer2Peer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Peer_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "hospital.Peer",
-	HandlerType: (*PeerServer)(nil),
+var Peer2Peer_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "hospital.Peer2Peer",
+	HandlerType: (*Peer2PeerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReceiveMessageFromPeer",
-			Handler:    _Peer_ReceiveMessageFromPeer_Handler,
+			MethodName: "SendMessageToPeer",
+			Handler:    _Peer2Peer_SendMessageToPeer_Handler,
+		},
+		{
+			MethodName: "InitiateSecretShare",
+			Handler:    _Peer2Peer_InitiateSecretShare_Handler,
+		},
+		{
+			MethodName: "SendSecretToPeer",
+			Handler:    _Peer2Peer_SendSecretToPeer_Handler,
+		},
+		{
+			MethodName: "GetSecretFromPeer",
+			Handler:    _Peer2Peer_GetSecretFromPeer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -111,8 +222,7 @@ var Peer_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Hospital_SendToHospital_FullMethodName      = "/hospital.Hospital/SendToHospital"
-	Hospital_ReceiveFromHospital_FullMethodName = "/hospital.Hospital/ReceiveFromHospital"
+	Hospital_SendToHospital_FullMethodName = "/hospital.Hospital/SendToHospital"
 )
 
 // HospitalClient is the client API for Hospital service.
@@ -120,8 +230,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HospitalClient interface {
 	// Define RPC methods for communication with the hospital
-	SendToHospital(ctx context.Context, in *PeerMessage, opts ...grpc.CallOption) (*Empty, error)
-	ReceiveFromHospital(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HospitalMessage, error)
+	SendToHospital(ctx context.Context, in *HospitalMessage, opts ...grpc.CallOption) (*HospitalResponse, error)
 }
 
 type hospitalClient struct {
@@ -132,18 +241,9 @@ func NewHospitalClient(cc grpc.ClientConnInterface) HospitalClient {
 	return &hospitalClient{cc}
 }
 
-func (c *hospitalClient) SendToHospital(ctx context.Context, in *PeerMessage, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
+func (c *hospitalClient) SendToHospital(ctx context.Context, in *HospitalMessage, opts ...grpc.CallOption) (*HospitalResponse, error) {
+	out := new(HospitalResponse)
 	err := c.cc.Invoke(ctx, Hospital_SendToHospital_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *hospitalClient) ReceiveFromHospital(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HospitalMessage, error) {
-	out := new(HospitalMessage)
-	err := c.cc.Invoke(ctx, Hospital_ReceiveFromHospital_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -155,8 +255,7 @@ func (c *hospitalClient) ReceiveFromHospital(ctx context.Context, in *Empty, opt
 // for forward compatibility
 type HospitalServer interface {
 	// Define RPC methods for communication with the hospital
-	SendToHospital(context.Context, *PeerMessage) (*Empty, error)
-	ReceiveFromHospital(context.Context, *Empty) (*HospitalMessage, error)
+	SendToHospital(context.Context, *HospitalMessage) (*HospitalResponse, error)
 	mustEmbedUnimplementedHospitalServer()
 }
 
@@ -164,11 +263,8 @@ type HospitalServer interface {
 type UnimplementedHospitalServer struct {
 }
 
-func (UnimplementedHospitalServer) SendToHospital(context.Context, *PeerMessage) (*Empty, error) {
+func (UnimplementedHospitalServer) SendToHospital(context.Context, *HospitalMessage) (*HospitalResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendToHospital not implemented")
-}
-func (UnimplementedHospitalServer) ReceiveFromHospital(context.Context, *Empty) (*HospitalMessage, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReceiveFromHospital not implemented")
 }
 func (UnimplementedHospitalServer) mustEmbedUnimplementedHospitalServer() {}
 
@@ -184,7 +280,7 @@ func RegisterHospitalServer(s grpc.ServiceRegistrar, srv HospitalServer) {
 }
 
 func _Hospital_SendToHospital_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PeerMessage)
+	in := new(HospitalMessage)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -196,25 +292,7 @@ func _Hospital_SendToHospital_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: Hospital_SendToHospital_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HospitalServer).SendToHospital(ctx, req.(*PeerMessage))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Hospital_ReceiveFromHospital_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HospitalServer).ReceiveFromHospital(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Hospital_ReceiveFromHospital_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HospitalServer).ReceiveFromHospital(ctx, req.(*Empty))
+		return srv.(HospitalServer).SendToHospital(ctx, req.(*HospitalMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -229,10 +307,6 @@ var Hospital_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendToHospital",
 			Handler:    _Hospital_SendToHospital_Handler,
-		},
-		{
-			MethodName: "ReceiveFromHospital",
-			Handler:    _Hospital_ReceiveFromHospital_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

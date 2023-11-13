@@ -3,30 +3,51 @@ package hospital;
 option go_package = "github.com/LysetsDal/hospital_sec/proto";
 
   
-service Peer {
-  // Define RPC methods for communication between peers
-  rpc ReceiveMessageFromPeer(Empty) returns (PeerMessage);
+service Peer2Peer {
+    // Define RPC methods for communication between peers
+    rpc SendMessageToPeer(PeerRequest) returns (PeerReply);
+    rpc InitiateSecretShare(SecretShare) returns (SecretReply);
+    rpc SendSecretToPeer(SecretShare) returns (SecretReply);
+
+
+    rpc GetSecretFromPeer(PeerRequest) returns (SecretShare);
+
+
 }
   
+message PeerRequest {
+    string from_peer = 1;
+    string payload = 2;
+}
+
+message PeerReply {
+    // Define fields for the message exchanged between peers
+    string from_peer = 1;
+    string payload = 2;
+}
+
+message SecretShare {
+    string from_peer = 1;
+    int32 share = 2;
+}
+
+message SecretReply {
+    string from_peer = 1;
+    string payload = 2;
+    int32 share = 3;
+}
+
 service Hospital {
-  // Define RPC methods for communication with the hospital
-  rpc SendToHospital(PeerMessage) returns (Empty);
-  rpc ReceiveFromHospital(Empty) returns (HospitalMessage);
-}
+    // Define RPC methods for communication with the hospital
+    rpc SendToHospital(HospitalMessage) returns (HospitalResponse);
+  }
 
-message Empty {
-
-}
-
-message PeerMessage {
-  // Define fields for the message exchanged between peers
-  string from_peer = 1;
-  string to_peer = 2;
-  string payload = 3;
-}
-  
 message HospitalMessage {
-  // Define fields for messages exchanged with the hospital
-  string from_peer = 1;
-  string payload = 2;
+    // Define fields for messages exchanged with the hospital
+    string from_peer = 1;
+    string payload = 2;
+}
+
+message HospitalResponse {
+    bool received = 1;
 }

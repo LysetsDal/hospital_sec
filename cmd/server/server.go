@@ -1,17 +1,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	pb "github.com/LysetsDal/hospital_sec/proto"
+
+	util "github.com/LysetsDal/hospital_sec/cmd/utils"
 )
 
 const (
@@ -19,36 +18,33 @@ const (
 	key  = "certs/hospital.key"
 )
 
-type Hospital struct {
+type HospitalServer struct {
 	pb.UnimplementedHospitalServer
 	ListenAddr string
 
 	ConnectionsMU sync.RWMutex
-	Connections   map[uuid.UUID]pb.PeerClient
+	Connections   []*grpc.ClientConn
 
 	SecretsArrayMU sync.Mutex
 	SecretsArray   []int32
 }
 
-func NewServer(host string, port string) *Hospital {
-	return &Hospital{
+func NewServer(host string, port string) *HospitalServer {
+	return &HospitalServer{
 		ListenAddr:   fmt.Sprintf("%s:%s", host, port),
-		Connections:  make(map[uuid.UUID]pb.PeerClient),
+		Connections:  make([]*grpc.ClientConn, 3),
 		SecretsArray: make([]int32, 0),
 	}
 }
 
-func (h *Hospital) MustStart() error {
-	keyPair, err := credentials.NewServerTLSFromFile(cert, key)
-	if err != nil {
-		log.Fatalf("Failed to generate credentials %v", err)
-	}
+func (h *HospitalServer) MustStart() error {
+	keyPair, _ := util.LoadServerTLSConfig(cert, key)
 
 	grpcServer := grpc.NewServer(
 		grpc.Creds((keyPair)),
 	)
 
-	pb.RegisterHospitalServer(grpcServer, h)
+	pb.RegisterHospitalServer(grpcServer, h.UnimplementedHospitalServer)
 
 	lis, err := net.Listen("tcp", h.ListenAddr)
 	if err != nil {
@@ -58,19 +54,9 @@ func (h *Hospital) MustStart() error {
 
 	fmt.Println("Starting new HospitalServer on:", h.ListenAddr)
 	return grpcServer.Serve(lis)
-
 }
 
 func main() {
 	s := NewServer("localhost", "5000")
 	log.Fatal(s.MustStart())
-}
-
-func (h *Hospital) SendToHospital(ctx context.Context, in *pb.HospitalMessage) (*pb.Empty, error) {
-	fmt.Sprintf("Message received from: %s", in.Payload)
-	return nil
-}
-
-func (h *Hospital) ReceiveFromHospital(ctx context.Context, in *pb.Empty) (*pb.HospitalMessage, error) {
-	return nil
 }
