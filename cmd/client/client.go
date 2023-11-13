@@ -109,18 +109,15 @@ func (p *Peer) readLoop() {
 			continue
 
 		case "secret":
-			name := promptInput("Enter name: \n")
-			if !p.PeerIsConnected(name) {
-				log.Printf("Peer {%s} not found\n", name)
-				continue
-			}
 			secret, _ := promptSecretInput("Enter secret: \n")
-			p.HandleInitiateSecretShare(secret, name)
+			p.HandleInitiateSecretShare(secret)
 			// Sum and send share to peers
 
 			// reconstruct all outputs to original secret
 			continue
 
+		case "getSecrets":
+			p.printSecrets()
 		default:
 			fmt.Println("Invalid option. Try again")
 			continue
@@ -179,7 +176,7 @@ func promptSecretInput(prompt string) (int32, error) {
 	return int32(secret), nil
 }
 
-func (p *Peer) HandleInitiateSecretShare(secret int32, name string) {
+func (p *Peer) HandleInitiateSecretShare(secret int32) {
 	numPeers := int32(len(p.Peers))
 	// fmt.Printf("Len p.Peers %v\n", numPeers) // DEBUGGING
 
@@ -204,7 +201,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int32, name string) {
 	p.populateSecretsMap(shares)
 	// DEBUGGING
 	p.printSecrets()
-	
+
 	// Send a share of split secret to peers:
 	p.SecretMU.Lock()
 	for p_name, secret := range p.SecretShares {
@@ -238,7 +235,6 @@ func (p *Peer) HandleInitiateSecretShare(secret int32, name string) {
 
 // Split and populate own secrets.
 // send secret corresponding to in.FromPeer back.
-
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretShare) (*pb.SecretReply, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
 	shares, err := util.SplitSecret(20, int32(len(p.Peers)))
@@ -246,8 +242,15 @@ func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretShare) (*pb
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
 	}
-
+	fmt.Printf("=========== Spilt secrets into array: ===========\n")
+	for i := range shares {
+		fmt.Printf("Shares: %v\n", shares[i])
+	}
 	p.populateSecretsMap(shares)
+	p.printSecrets()
+
+	// Store old share from 
+	oldShare := p.SecretShares[in.FromPeer]
 
 	targetAddr := p.PeerDNS[in.FromPeer]
 	_, exists := p.Peers[targetAddr]
@@ -255,8 +258,10 @@ func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretShare) (*pb
 		log.Println("Failed to find target addr in peers")
 	}
 
+	p.SecretShares[in.FromPeer] = in.Share
+
 	return &pb.SecretReply{
-		FromPeer: p.Name, Payload: "", Share: p.SecretShares[in.FromPeer]}, nil
+		FromPeer: p.Name, Payload: "", Share: oldShare}, nil
 }
 
 func (p *Peer) SendSecretToPeer(ctx context.Context, in *pb.SecretShare) (*pb.SecretReply, error) {
@@ -265,7 +270,6 @@ func (p *Peer) SendSecretToPeer(ctx context.Context, in *pb.SecretShare) (*pb.Se
 
 	return &pb.SecretReply{FromPeer: p.ListenAddr, Payload: logMessage}, nil
 }
-
 
 func (p *Peer) populateSecretsMap(shares []int32) {
 	p.SecretMU.Lock()
