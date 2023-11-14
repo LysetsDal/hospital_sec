@@ -78,7 +78,7 @@ func (p *Peer) StartListening(certFile, keyFile string) {
 	pb.RegisterPeer2PeerServer(grpcServer, p)
 	reflection.Register(grpcServer)
 
-	// start listening
+	// START LISTENING
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
@@ -128,7 +128,7 @@ func (p *Peer) HandleSendMessageToPeer(name, text string) {
 		return
 	}
 
-	msg := &pb.PeerRequest{
+	msg := &pb.PeerMessage{
 		FromPeer: p.ListenAddr,
 		Payload:  text,
 	}
@@ -142,16 +142,17 @@ func (p *Peer) HandleSendMessageToPeer(name, text string) {
 	fmt.Printf("Peer {%s}: Message received\n", res.FromPeer)
 }
 
-func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerRequest) (*pb.PeerReply, error) {
+func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerMessage) (*pb.PeerMessage, error) {
 	log.Printf("Message from {%s} - %s\n", in.FromPeer, in.Payload)
 	log_m := fmt.Sprintf("Peer {%s}: message received - %s", p.PeerDNS[p.Name], in.Payload)
-	return &pb.PeerReply{
+	return &pb.PeerMessage{
 		FromPeer: p.ListenAddr,
 		Payload:  log_m,
 	}, nil
 }
 
 // ======= SECRET SHARE-ING =========
+// PERSON CALLING THIS INITIATES SECRET SHARE WITHIN PEER-2PEER CLUSTER
 func (p *Peer) HandleInitiateSecretShare(secret int32) {
 	num_peers := int32(len(p.Peers))
 	if num_peers == 0 {
@@ -202,7 +203,6 @@ func (p *Peer) HandleInitiateSecretShare(secret int32) {
 
 }
 
-// PERSON CALLING THIS INITIATES SECRET SHARE WITHIN PEER-2PEER CLUSTER
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
 	shares, err := util.SplitSecret(30, int32(len(p.Peers))) // <-- SECRET IS HARDCODED PT.
@@ -246,15 +246,16 @@ func (p *Peer) HandleSendAddedOutputToPeer() {
 
 		res, err := target.SendAddedOutputToPeer(context.Background(), out)
 		if err != nil {
-			log.Printf("Error exchanging share with peer %s: %v\n", target_ip, err)
+			log.Printf("Error exchanging Added output with peer %s: %v\n", target_ip, err)
 			return
 		}
 		p.SecretShares[res.FromPeer] = res.Share // SAVE OTHER PEERS ACCUMULATED OUTPUTS
+		log.Printf("Peer{%s} - Added Output: %d received\n", res.FromPeer, res.Share)
 	}
 }
 
 func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
-	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
+	log.Printf("Message from {%s} - Added Output: %d\n", in.FromPeer, in.Share)
 	share_sum := p.sumShares()
 	p.SecretShares[in.FromPeer] = in.Share
 

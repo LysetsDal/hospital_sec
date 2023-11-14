@@ -7,17 +7,12 @@ service Hospital {
 }
   
 service Peer2Peer {
-    rpc SendMessageToPeer(PeerRequest) returns (PeerReply);
+    rpc SendMessageToPeer(PeerMessage) returns (PeerMessage);
     rpc InitiateSecretShare(SecretMessage) returns (SecretMessage);
     rpc SendAddedOutputToPeer(SecretMessage) returns (SecretMessage);
 }
   
-message PeerRequest {
-    string from_peer = 1;
-    string payload = 2;
-}
-
-message PeerReply {
+message PeerMessage {
     string from_peer = 1;
     string payload = 2;
 }

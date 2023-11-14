@@ -118,7 +118,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type Peer2PeerClient interface {
-	SendMessageToPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*PeerReply, error)
+	SendMessageToPeer(ctx context.Context, in *PeerMessage, opts ...grpc.CallOption) (*PeerMessage, error)
 	InitiateSecretShare(ctx context.Context, in *SecretMessage, opts ...grpc.CallOption) (*SecretMessage, error)
 	SendAddedOutputToPeer(ctx context.Context, in *SecretMessage, opts ...grpc.CallOption) (*SecretMessage, error)
 }
@@ -131,8 +131,8 @@ func NewPeer2PeerClient(cc grpc.ClientConnInterface) Peer2PeerClient {
 	return &peer2PeerClient{cc}
 }
 
-func (c *peer2PeerClient) SendMessageToPeer(ctx context.Context, in *PeerRequest, opts ...grpc.CallOption) (*PeerReply, error) {
-	out := new(PeerReply)
+func (c *peer2PeerClient) SendMessageToPeer(ctx context.Context, in *PeerMessage, opts ...grpc.CallOption) (*PeerMessage, error) {
+	out := new(PeerMessage)
 	err := c.cc.Invoke(ctx, Peer2Peer_SendMessageToPeer_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (c *peer2PeerClient) SendAddedOutputToPeer(ctx context.Context, in *SecretM
 // All implementations must embed UnimplementedPeer2PeerServer
 // for forward compatibility
 type Peer2PeerServer interface {
-	SendMessageToPeer(context.Context, *PeerRequest) (*PeerReply, error)
+	SendMessageToPeer(context.Context, *PeerMessage) (*PeerMessage, error)
 	InitiateSecretShare(context.Context, *SecretMessage) (*SecretMessage, error)
 	SendAddedOutputToPeer(context.Context, *SecretMessage) (*SecretMessage, error)
 	mustEmbedUnimplementedPeer2PeerServer()
@@ -172,7 +172,7 @@ type Peer2PeerServer interface {
 type UnimplementedPeer2PeerServer struct {
 }
 
-func (UnimplementedPeer2PeerServer) SendMessageToPeer(context.Context, *PeerRequest) (*PeerReply, error) {
+func (UnimplementedPeer2PeerServer) SendMessageToPeer(context.Context, *PeerMessage) (*PeerMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessageToPeer not implemented")
 }
 func (UnimplementedPeer2PeerServer) InitiateSecretShare(context.Context, *SecretMessage) (*SecretMessage, error) {
@@ -195,7 +195,7 @@ func RegisterPeer2PeerServer(s grpc.ServiceRegistrar, srv Peer2PeerServer) {
 }
 
 func _Peer2Peer_SendMessageToPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PeerRequest)
+	in := new(PeerMessage)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func _Peer2Peer_SendMessageToPeer_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: Peer2Peer_SendMessageToPeer_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(Peer2PeerServer).SendMessageToPeer(ctx, req.(*PeerRequest))
+		return srv.(Peer2PeerServer).SendMessageToPeer(ctx, req.(*PeerMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
