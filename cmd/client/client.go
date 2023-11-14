@@ -33,8 +33,8 @@ type Peer struct {
 	ListenAddr string
 	Name       string
 
-	Peers   map[string]pb.Peer2PeerClient
 	PeerDNS map[string]string
+	Peers   map[string]pb.Peer2PeerClient
 
 	SecretMU     sync.Mutex
 	SecretShares map[string]int32
@@ -43,8 +43,8 @@ type Peer struct {
 func NewPeer(host, port string) *Peer {
 	return &Peer{
 		ListenAddr:   fmt.Sprintf("%s:%s", host, port),
-		Peers:        make(map[string]pb.Peer2PeerClient),
 		PeerDNS:      make(map[string]string),
+		Peers:        make(map[string]pb.Peer2PeerClient),
 		SecretShares: make(map[string]int32),
 	}
 }
@@ -82,7 +82,6 @@ func (p *Peer) Start() error {
 func main() {
 	flag.Parse()
 	p := NewPeer(host, *port)
-
 	p.Start()
 }
 
@@ -95,7 +94,7 @@ func (p *Peer) readLoop() {
 		switch strings.TrimSpace(input) {
 		case "sendPeer":
 			name := promptInput("Enter name: \n")
-			if !p.PeerIsConnected(name) {
+			if !p.IsConnected(name) {
 				log.Printf("Peer {%s} not found\n", name)
 				continue
 			}
@@ -110,14 +109,17 @@ func (p *Peer) readLoop() {
 
 		case "secret":
 			secret, _ := promptSecretInput("Enter secret: \n")
-			p.HandleInitiateSecretShare(secret)
 			// Sum and send share to peers
-
+			p.HandleInitiateSecretShare(secret)
 			// reconstruct all outputs to original secret
+			p.HandleSendSecretShareToPeer()
+
 			continue
 
 		case "getSecrets":
 			p.printSecrets()
+		case "exit":
+			os.Exit(0)
 		default:
 			fmt.Println("Invalid option. Try again")
 			continue
@@ -166,7 +168,7 @@ func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerRequest) (*pb.P
 	}, nil
 }
 
-// ======= SECRET SHAREING =========
+// ======= SECRET SHARE-ING =========
 func promptSecretInput(prompt string) (int32, error) {
 	input := promptInput(prompt)
 	secret, err := strconv.Atoi(input)
@@ -216,7 +218,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int32) {
 			return
 		}
 
-		msg := &pb.SecretShare{
+		msg := &pb.SecretMessage{
 			FromPeer: p.Name,
 			Share:    secret,
 		}
@@ -233,23 +235,27 @@ func (p *Peer) HandleInitiateSecretShare(secret int32) {
 	p.SecretMU.Unlock()
 }
 
-// Split and populate own secrets.
+// Split and populate own secrets map.
 // send secret corresponding to in.FromPeer back.
-func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretShare) (*pb.SecretReply, error) {
+func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	shares, err := util.SplitSecret(20, int32(len(p.Peers)))
+	shares, err := util.SplitSecret(20, int32(len(p.Peers))) // <-- hardcoded secret pt.
 	if err != nil {
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
 	}
+	// DEBUGGING:
 	fmt.Printf("=========== Spilt secrets into array: ===========\n")
 	for i := range shares {
 		fmt.Printf("Shares: %v\n", shares[i])
 	}
+
 	p.populateSecretsMap(shares)
+
+	// DEBUGGING :
 	p.printSecrets()
 
-	// Store old share from 
+	// Store own computed share of the person sending you a SecretShare
 	oldShare := p.SecretShares[in.FromPeer]
 
 	targetAddr := p.PeerDNS[in.FromPeer]
@@ -260,27 +266,74 @@ func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretShare) (*pb
 
 	p.SecretShares[in.FromPeer] = in.Share
 
-	return &pb.SecretReply{
-		FromPeer: p.Name, Payload: "", Share: oldShare}, nil
+	return &pb.SecretMessage{
+		FromPeer: p.Name, Share: oldShare}, nil
 }
 
-func (p *Peer) SendSecretToPeer(ctx context.Context, in *pb.SecretShare) (*pb.SecretReply, error) {
+func (p *Peer) HandleSendSecretShareToPeer() {
+	// Sum shares and save under own entry
+	share_sum := p.sumShares()
+
+	out := &pb.SecretMessage{
+		FromPeer: p.Name,
+		Share:    share_sum,
+	}
+
+	// Send to all other peers -          <- @TODO REFACTOR INTO FUNC
+	for p_name := range p.SecretShares {
+		if p_name == p.Name {
+			continue
+		}
+
+		targetAddr := p.PeerDNS[p_name]
+		target, exists := p.Peers[targetAddr]
+		if !exists {
+			log.Println("Failed to find target addr in peers")
+			return
+		}
+
+		res, err := target.SendAddedOutputToPeer(context.Background(), out)
+		if err != nil {
+			log.Printf("Error exchanging share with peer %s: %v\n", targetAddr, err)
+			return
+		}
+		p.SecretShares[res.FromPeer] = res.Share
+	}
+
+	p.printSecrets()
+}
+
+func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	logMessage := fmt.Sprintf("Peer {%s}: Share received - %d\n", p.PeerDNS[p.Name], in.Share)
+	share_sum := p.sumShares()
+	p.SecretShares[in.FromPeer] = in.Share
 
-	return &pb.SecretReply{FromPeer: p.ListenAddr, Payload: logMessage}, nil
+	return &pb.SecretMessage{FromPeer: p.Name, Share: share_sum}, nil
 }
 
+// =============== UTILITY FUNCTIONS ====================
 func (p *Peer) populateSecretsMap(shares []int32) {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
-	// Populate the secret shares map.
+
 	i := 0
 	for p_name := range p.PeerDNS {
 		// Store the share in the map using the peer's name as the key
 		p.SecretShares[p_name] = shares[i]
 		i++
 	}
+}
+
+func (p *Peer) sumShares() int32 {
+	p.SecretMU.Lock()
+	defer p.SecretMU.Unlock()
+	sum := int32(0)
+	for _, share := range p.SecretShares {
+		sum += share
+		share = 0
+	}
+	p.SecretShares[p.Name] = sum
+	return sum
 }
 
 func (p *Peer) printSecrets() {
@@ -290,17 +343,14 @@ func (p *Peer) printSecrets() {
 	}
 }
 
-func (p *Peer) PeerIsConnected(name string) bool {
+func (p *Peer) IsConnected(name string) bool {
 	_, exists := p.PeerDNS[name]
 	return exists
 }
 
 func (p *Peer) AddPeerConn(ip_addr string) error {
-	var conn *grpc.ClientConn
-
 	conn, err := grpc.Dial(ip_addr,
-		grpc.WithTransportCredentials(
-			credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
+		grpc.WithTransportCredentials(credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
 	if err != nil {
 		log.Fatalf("Could not connect to peer: %s\n", err)
 		return err
@@ -313,16 +363,15 @@ func (p *Peer) AddPeerConn(ip_addr string) error {
 }
 
 func (p *Peer) initPeerDNS() {
-
 	peers := map[string]string{
 		"alice":   "localhost:8080",
 		"bob":     "localhost:8081",
 		"charlie": "localhost:8082",
 	}
 
-	for peer, port := range peers {
-		p.AddPeerConn(port)
-		p.PeerDNS[peer] = port
+	for p_name, ip_addr := range peers {
+		p.AddPeerConn(ip_addr)
+		p.PeerDNS[p_name] = ip_addr
 	}
 }
 

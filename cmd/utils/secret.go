@@ -49,14 +49,3 @@ func randomShare(maxShare int32) (int32, error) {
 
 	return int32(share.Int64()), nil
 }
-
-// GenerateLocalOutput calculates the local output based on the received shares.
-func GenerateLocalOutput(shares []int32) int32 {
-	var localOutput int32 = 0
-
-	for _, share := range shares {
-		localOutput += share
-	}
-
-	return localOutput
-}

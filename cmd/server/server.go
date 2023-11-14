@@ -40,11 +40,8 @@ func NewServer(host string, port string) *HospitalServer {
 func (h *HospitalServer) MustStart() error {
 	keyPair, _ := util.LoadServerTLSConfig(cert, key)
 
-	grpcServer := grpc.NewServer(
-		grpc.Creds((keyPair)),
-	)
-
-	pb.RegisterHospitalServer(grpcServer, h.UnimplementedHospitalServer)
+	grpcServer := grpc.NewServer(grpc.Creds((keyPair)))
+	pb.RegisterHospitalServer(grpcServer, h)
 
 	lis, err := net.Listen("tcp", h.ListenAddr)
 	if err != nil {
