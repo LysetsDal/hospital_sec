@@ -1,16 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 
-	"google.golang.org/grpc"
-
-	pb "github.com/LysetsDal/hospital_sec/proto"
-
 	util "github.com/LysetsDal/hospital_sec/cmd/utils"
+	pb "github.com/LysetsDal/hospital_sec/proto"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -22,22 +21,23 @@ type HospitalServer struct {
 	pb.UnimplementedHospitalServer
 	ListenAddr string
 
-	ConnectionsMU sync.RWMutex
-	Connections   []*grpc.ClientConn
-
-	SecretsArrayMU sync.Mutex
-	SecretsArray   []int32
+	ML_DATA_MU sync.Mutex
+	ML_DATA    int32
 }
 
 func NewServer(host string, port string) *HospitalServer {
 	return &HospitalServer{
-		ListenAddr:   fmt.Sprintf("%s:%s", host, port),
-		Connections:  make([]*grpc.ClientConn, 3),
-		SecretsArray: make([]int32, 0),
+		ListenAddr: fmt.Sprintf("%s:%s", host, port),
+		ML_DATA:    0,
 	}
 }
 
-func (h *HospitalServer) MustStart() error {
+func main() {
+	s := NewServer("localhost", "5000")
+	log.Fatal(s.Start())
+}
+
+func (h *HospitalServer) Start() error {
 	keyPair, _ := util.LoadServerTLSConfig(cert, key)
 
 	grpcServer := grpc.NewServer(grpc.Creds((keyPair)))
@@ -49,11 +49,15 @@ func (h *HospitalServer) MustStart() error {
 		panic(err)
 	}
 
-	fmt.Println("Starting new HospitalServer on:", h.ListenAddr)
+	fmt.Printf("Starting new HospitalServer on: %s\n", h.ListenAddr)
 	return grpcServer.Serve(lis)
 }
 
-func main() {
-	s := NewServer("localhost", "5000")
-	log.Fatal(s.MustStart())
+// WRITES TO DATA (THE VALUE IS OVERWRITTEN EACH TIME FOR DEMONSTRATION PURPOSES)
+func (h *HospitalServer) SendToHospital(ctx context.Context, in *pb.HospitalMessage) (*pb.HospitalResponse, error) {
+	h.ML_DATA_MU.Lock()
+	defer h.ML_DATA_MU.Unlock()
+	h.ML_DATA = in.AnonymousAccumulatedData
+	log.Printf("Hospital ML_DATA set: %d", h.ML_DATA)
+	return &pb.HospitalResponse{DataReceived: true}, nil
 }

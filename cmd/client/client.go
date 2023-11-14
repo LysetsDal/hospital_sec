@@ -23,7 +23,7 @@ import (
 var (
 	host     = "localhost"
 	name     = flag.String("name", "", "Name of the peer")
-	port     = flag.String("port", "5000", "port for peer")
+	port     = flag.String("port", "8080", "port for peer")
 	certFile = flag.String("cert", "certs/alice.crt", "load cert file")
 	keyFile  = flag.String("key", "certs/alice.key", "load key file")
 )
@@ -49,6 +49,21 @@ func NewPeer(host, port string) *Peer {
 	}
 }
 
+func main() {
+	flag.Parse()
+	p := NewPeer(host, *port)
+	p.Start()
+}
+
+func (p *Peer) Start() error {
+	p.Name = *name
+	p.initPeerDNS()
+	go p.StartListening(*certFile, *keyFile)
+	p.readLoop()
+
+	select {}
+}
+
 func (p *Peer) StartListening(certFile, keyFile string) {
 	keyPair, err := credentials.NewServerTLSFromFile(certFile, keyFile)
 	if err != nil {
@@ -70,76 +85,44 @@ func (p *Peer) StartListening(certFile, keyFile string) {
 	log.Printf("New Peer listening on: %s", p.ListenAddr)
 }
 
-func (p *Peer) Start() error {
-	p.Name = *name
-	p.initPeerDNS()
-	go p.StartListening(*certFile, *keyFile)
-	p.readLoop()
-
-	select {}
-}
-
-func main() {
-	flag.Parse()
-	p := NewPeer(host, *port)
-	p.Start()
-}
-
 func (p *Peer) readLoop() {
+	p.welcomePrompt()
 	time.Sleep(200 * time.Millisecond)
-
 	for {
-		input := promptInput("Enter Message: \n")
+		input := promptInput("Enter command: \n")
 
 		switch strings.TrimSpace(input) {
 		case "sendPeer":
 			name := promptInput("Enter name: \n")
-			if !p.IsConnected(name) {
-				log.Printf("Peer {%s} not found\n", name)
-				continue
-			}
 			text := promptInput("Enter message: \n")
 			p.HandleSendMessageToPeer(name, text)
 			continue
-
-		case "broadcast":
-			text := promptInput("Enter broadcast message: \n")
-			p.HandleBroadcastToPeers(text)
-			continue
-
+		// SECRET SHARING
 		case "secret":
 			secret, _ := promptSecretInput("Enter secret: \n")
 			// Sum and send share to peers
 			p.HandleInitiateSecretShare(secret)
-			// reconstruct all outputs to original secret
-			p.HandleSendSecretShareToPeer()
-
+			// Add and send own output to peers
+			p.HandleSendAddedOutputToPeer()
+			// Reconstruct and send to Hospital
+			p.handleSendToHospital(p.sumShares())
 			continue
-
+		// Print Secrets (For debugging)
 		case "getSecrets":
 			p.printSecrets()
 		case "exit":
 			os.Exit(0)
 		default:
-			fmt.Println("Invalid option. Try again")
+			fmt.Println("Invalid command. Try again")
 			continue
 		}
 	}
 }
 
-// ========== MESSAGE TO PEERS ===========
-func (p *Peer) HandleBroadcastToPeers(text string) {
-	for name := range p.PeerDNS {
-		if name == p.Name {
-			continue
-		}
-		p.HandleSendMessageToPeer(name, text)
-	}
-}
-
+// ========== MESSAGE TO PEER ===========
 func (p *Peer) HandleSendMessageToPeer(name, text string) {
-	targetAddr := p.PeerDNS[name]
-	target, exists := p.Peers[targetAddr]
+	target_ip := p.PeerDNS[name]
+	target, exists := p.Peers[target_ip]
 	if !exists {
 		log.Println("Failed to find target addr in peers")
 		return
@@ -152,7 +135,7 @@ func (p *Peer) HandleSendMessageToPeer(name, text string) {
 
 	res, err := target.SendMessageToPeer(context.Background(), msg)
 	if err != nil {
-		log.Printf("Error sending message to peer %s: %v\n", targetAddr, err)
+		log.Printf("Error sending message to peer %s: %v\n", target_ip, err)
 		return
 	}
 
@@ -161,60 +144,43 @@ func (p *Peer) HandleSendMessageToPeer(name, text string) {
 
 func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerRequest) (*pb.PeerReply, error) {
 	log.Printf("Message from {%s} - %s\n", in.FromPeer, in.Payload)
-	logMessage := fmt.Sprintf("Peer {%s}: message received - %s", p.PeerDNS[p.Name], in.Payload)
+	log_m := fmt.Sprintf("Peer {%s}: message received - %s", p.PeerDNS[p.Name], in.Payload)
 	return &pb.PeerReply{
 		FromPeer: p.ListenAddr,
-		Payload:  logMessage,
+		Payload:  log_m,
 	}, nil
 }
 
 // ======= SECRET SHARE-ING =========
-func promptSecretInput(prompt string) (int32, error) {
-	input := promptInput(prompt)
-	secret, err := strconv.Atoi(input)
-	if err != nil {
-		return 0, err
-	}
-	return int32(secret), nil
-}
-
 func (p *Peer) HandleInitiateSecretShare(secret int32) {
-	numPeers := int32(len(p.Peers))
-	// fmt.Printf("Len p.Peers %v\n", numPeers) // DEBUGGING
-
-	if numPeers == 0 {
+	num_peers := int32(len(p.Peers))
+	if num_peers == 0 {
 		fmt.Println("No peers available to share the secret with.")
 		return
 	}
 
-	// Split secret into shares:
-	shares, err := util.SplitSecret(secret, numPeers)
+	// SPLIT SECRET INTO SHARES
+	shares, err := util.SplitSecret(secret, num_peers)
 	if err != nil {
 		log.Printf("Error splitting secret into shares %v\n", err)
 		return
 	}
-	// DEBUGGING
-	fmt.Printf("=========== Spilt secrets into array: ===========\n")
-	for i := range shares {
-		fmt.Printf("Shares: %v\n", shares[i])
-	}
 
-	// Map name of peer to a share in the map:
 	p.populateSecretsMap(shares)
-	// DEBUGGING
-	p.printSecrets()
 
-	// Send a share of split secret to peers:
+	// SEND A SHARE OF THE SECRET TO ALL PEERS:
 	p.SecretMU.Lock()
+	defer p.SecretMU.Unlock()
+
 	for p_name, secret := range p.SecretShares {
 		if p_name == p.Name {
-			continue
+			continue // (DON'T SEND TO SELF)
 		}
 
-		targetAddr := p.PeerDNS[p_name]
-		target, exists := p.Peers[targetAddr]
+		target_ip := p.PeerDNS[p_name]
+		target, exists := p.Peers[target_ip]
 		if !exists {
-			log.Println("Failed to find target addr in peers")
+			log.Println("Failed to find target address in Peer connections")
 			return
 		}
 
@@ -225,82 +191,66 @@ func (p *Peer) HandleInitiateSecretShare(secret int32) {
 
 		res, err := target.InitiateSecretShare(context.Background(), msg)
 		if err != nil {
-			log.Printf("Error exchanging share with peer %s: %v\n", targetAddr, err)
+			log.Printf("Error exchanging share with peer %s: %v\n", target_ip, err)
 			return
 		}
-		// INSERT THIS NEW VALUE INTO CORRESPONDING SECRETS ARRAY:
+
+		// INSERT THIS NEW VALUE INTO THE CORRESPONDING SECRETS ARRAY:
 		p.SecretShares[res.FromPeer] = res.Share
 		log.Printf("Peer {%s}: Share {%d} received\n", res.FromPeer, res.Share)
 	}
-	p.SecretMU.Unlock()
+
 }
 
-// Split and populate own secrets map.
-// send secret corresponding to in.FromPeer back.
+// PERSON CALLING THIS INITIATES SECRET SHARE WITHIN PEER-2PEER CLUSTER
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	shares, err := util.SplitSecret(20, int32(len(p.Peers))) // <-- hardcoded secret pt.
+	shares, err := util.SplitSecret(30, int32(len(p.Peers))) // <-- SECRET IS HARDCODED PT.
 	if err != nil {
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
 	}
-	// DEBUGGING:
-	fmt.Printf("=========== Spilt secrets into array: ===========\n")
-	for i := range shares {
-		fmt.Printf("Shares: %v\n", shares[i])
-	}
 
 	p.populateSecretsMap(shares)
 
-	// DEBUGGING :
-	p.printSecrets()
+	// STORE OWN COMPUTED SHARE OF THE PERSON SENDING YOU A SHARE
+	old_share := p.SecretShares[in.FromPeer]
 
-	// Store own computed share of the person sending you a SecretShare
-	oldShare := p.SecretShares[in.FromPeer]
-
-	targetAddr := p.PeerDNS[in.FromPeer]
-	_, exists := p.Peers[targetAddr]
+	target_ip := p.PeerDNS[in.FromPeer]
+	_, exists := p.Peers[target_ip]
 	if !exists {
 		log.Println("Failed to find target addr in peers")
 	}
 
 	p.SecretShares[in.FromPeer] = in.Share
 
-	return &pb.SecretMessage{
-		FromPeer: p.Name, Share: oldShare}, nil
+	return &pb.SecretMessage{FromPeer: p.Name, Share: old_share}, nil
 }
 
-func (p *Peer) HandleSendSecretShareToPeer() {
-	// Sum shares and save under own entry
-	share_sum := p.sumShares()
+func (p *Peer) HandleSendAddedOutputToPeer() {
+	share_sum := p.sumShares() // SUM AND SAVE SHARES
 
 	out := &pb.SecretMessage{
 		FromPeer: p.Name,
 		Share:    share_sum,
 	}
 
-	// Send to all other peers -          <- @TODO REFACTOR INTO FUNC
+	// SEND TO ALL OTHER PEERS
 	for p_name := range p.SecretShares {
 		if p_name == p.Name {
 			continue
 		}
 
-		targetAddr := p.PeerDNS[p_name]
-		target, exists := p.Peers[targetAddr]
-		if !exists {
-			log.Println("Failed to find target addr in peers")
-			return
-		}
+		target_ip := p.PeerDNS[p_name]
+		target := p.Peers[target_ip]
 
 		res, err := target.SendAddedOutputToPeer(context.Background(), out)
 		if err != nil {
-			log.Printf("Error exchanging share with peer %s: %v\n", targetAddr, err)
+			log.Printf("Error exchanging share with peer %s: %v\n", target_ip, err)
 			return
 		}
-		p.SecretShares[res.FromPeer] = res.Share
+		p.SecretShares[res.FromPeer] = res.Share // SAVE OTHER PEERS ACCUMULATED OUTPUTS
 	}
-
-	p.printSecrets()
 }
 
 func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
@@ -312,56 +262,54 @@ func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) 
 }
 
 // =============== UTILITY FUNCTIONS ====================
+
+// MAP THE NAME OF A PEER TO A SHARE IN THE SECRETS MAP
 func (p *Peer) populateSecretsMap(shares []int32) {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
 
 	i := 0
 	for p_name := range p.PeerDNS {
-		// Store the share in the map using the peer's name as the key
 		p.SecretShares[p_name] = shares[i]
 		i++
 	}
 }
 
+// SUM AND SAVE THE SHARES IN THE MAP
 func (p *Peer) sumShares() int32 {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
+
 	sum := int32(0)
 	for _, share := range p.SecretShares {
 		sum += share
 		share = 0
 	}
+
 	p.SecretShares[p.Name] = sum
 	return sum
 }
 
-func (p *Peer) printSecrets() {
-	fmt.Printf("=========== POPULATED MAP ===========\n")
-	for name, share := range p.SecretShares {
-		fmt.Printf("Name: %s - Share: %d\n", name, share)
-	}
-}
-
-func (p *Peer) IsConnected(name string) bool {
-	_, exists := p.PeerDNS[name]
-	return exists
-}
-
-func (p *Peer) AddPeerConn(ip_addr string) error {
-	conn, err := grpc.Dial(ip_addr,
+// DIAL THE HOSPITAL AND SEND ACCUMULATED DATA
+func (p *Peer) handleSendToHospital(data int32) {
+	conn, err := grpc.Dial("localhost:5000",
 		grpc.WithTransportCredentials(credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
 	if err != nil {
-		log.Fatalf("Could not connect to peer: %s\n", err)
-		return err
+		log.Fatalf("Could not connect to hospital: %s\n", err)
 	}
 
-	log.Printf("Success on dial to Peer: %v\n", ip_addr)
-	newPeer := pb.NewPeer2PeerClient(conn)
-	p.Peers[ip_addr] = newPeer
-	return nil
+	hospital := pb.NewHospitalClient(conn)
+
+	out := &pb.HospitalMessage{
+		AnonymousAccumulatedData: data,
+	}
+
+	res, _ := hospital.SendToHospital(context.Background(), out)
+
+	log.Printf("Hospital received data: %v", res.DataReceived)
 }
 
+// SIMULATED DNS FOR THE PEERS (LOOKUP TABLE)
 func (p *Peer) initPeerDNS() {
 	peers := map[string]string{
 		"alice":   "localhost:8080",
@@ -370,14 +318,55 @@ func (p *Peer) initPeerDNS() {
 	}
 
 	for p_name, ip_addr := range peers {
-		p.AddPeerConn(ip_addr)
+		p.addPeerConn(ip_addr)
 		p.PeerDNS[p_name] = ip_addr
 	}
 }
 
+func (p *Peer) addPeerConn(ip_addr string) error {
+	conn, err := grpc.Dial(ip_addr,
+		grpc.WithTransportCredentials(credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
+	if err != nil {
+		log.Fatalf("Could not connect to peer: %s\n", err)
+		return err
+	}
+
+	log.Printf("Success on dial to Peer: %v\n", ip_addr)
+	new_peer := pb.NewPeer2PeerClient(conn)
+	p.Peers[ip_addr] = new_peer
+	return nil
+}
+
+// ======== I/O HELPER FUNCTIONS =========
 func promptInput(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(prompt)
 	input, _ := reader.ReadString('\n')
 	return strings.TrimSpace(input)
+}
+
+func promptSecretInput(prompt string) (int32, error) {
+	input := promptInput(prompt)
+	secret, err := strconv.Atoi(input)
+	if err != nil {
+		return 0, err
+	}
+	return int32(secret), nil
+}
+
+func (p *Peer) welcomePrompt() {
+	fmt.Println()
+	fmt.Println("====== COMMANDS ======")
+	fmt.Println("sendPeer - Send a message to a peer, by name {alice, bob, charlie}")
+	fmt.Println("secret - Initiate secret sharing")
+	fmt.Println("exit - terminate program")
+	fmt.Println()
+}
+
+// FOR DEBUGGING
+func (p *Peer) printSecrets() {
+	fmt.Printf("=========== POPULATED MAP ===========\n")
+	for name, share := range p.SecretShares {
+		fmt.Printf("Name: %s - Share: %d\n", name, share)
+	}
 }

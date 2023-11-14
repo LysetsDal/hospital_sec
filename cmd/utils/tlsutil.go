@@ -27,17 +27,3 @@ func LoadTLSConfig(c_cert string, c_key string) *tls.Config {
 		InsecureSkipVerify: true, // Don't use in production!
 	}
 }
-
-func LoadTLSCert(c_cert string, c_key string) credentials.TransportCredentials {
-	cert, err := tls.LoadX509KeyPair(c_cert, c_key)
-	if err != nil {
-		fmt.Printf("could'nt load cert: %v\n", err)
-		panic(err)
-	}
-
-	config := tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true, // Don't use in production!
-	}
-	return credentials.NewTLS(&config)
-}
