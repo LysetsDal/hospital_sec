@@ -19,11 +19,11 @@ message PeerMessage {
 
 message SecretMessage {
     string from_peer = 1;
-    int32 share = 2;
+    int64 share = 2;
 }
 
 message HospitalMessage {
-    int32 anonymous_accumulated_data = 1;
+    int64 anonymous_accumulated_data = 1;
 }
 
 message HospitalResponse {

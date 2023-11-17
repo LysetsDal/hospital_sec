@@ -22,7 +22,7 @@ type HospitalServer struct {
 	ListenAddr string
 
 	ML_DATA_MU sync.Mutex
-	ML_DATA    int32
+	ML_DATA    int64
 }
 
 func NewServer(host string, port string) *HospitalServer {

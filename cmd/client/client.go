@@ -37,7 +37,7 @@ type Peer struct {
 	Peers   map[string]pb.Peer2PeerClient
 
 	SecretMU     sync.Mutex
-	SecretShares map[string]int32
+	SecretShares map[string]int64
 }
 
 func NewPeer(host, port string) *Peer {
@@ -45,7 +45,7 @@ func NewPeer(host, port string) *Peer {
 		ListenAddr:   fmt.Sprintf("%s:%s", host, port),
 		PeerDNS:      make(map[string]string),
 		Peers:        make(map[string]pb.Peer2PeerClient),
-		SecretShares: make(map[string]int32),
+		SecretShares: make(map[string]int64),
 	}
 }
 
@@ -153,8 +153,8 @@ func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerMessage) (*pb.P
 
 // ======= SECRET SHARE-ING =========
 // PERSON CALLING THIS INITIATES SECRET SHARE WITHIN PEER-2PEER CLUSTER
-func (p *Peer) HandleInitiateSecretShare(secret int32) {
-	num_peers := int32(len(p.Peers))
+func (p *Peer) HandleInitiateSecretShare(secret int64) {
+	num_peers := int64(len(p.Peers))
 	if num_peers == 0 {
 		fmt.Println("No peers available to share the secret with.")
 		return
@@ -205,7 +205,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int32) {
 
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	shares, err := util.SplitSecret(30, int32(len(p.Peers))) // <-- SECRET IS HARDCODED PT.
+	shares, err := util.SplitSecret(30, int64(len(p.Peers))) // <-- SECRET IS HARDCODED TO 30 PT.
 	if err != nil {
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
@@ -265,7 +265,7 @@ func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) 
 // =============== UTILITY FUNCTIONS ====================
 
 // MAP THE NAME OF A PEER TO A SHARE IN THE SECRETS MAP
-func (p *Peer) populateSecretsMap(shares []int32) {
+func (p *Peer) populateSecretsMap(shares []int64) {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
 
@@ -277,11 +277,11 @@ func (p *Peer) populateSecretsMap(shares []int32) {
 }
 
 // SUM AND SAVE THE SHARES IN THE MAP
-func (p *Peer) sumShares() int32 {
+func (p *Peer) sumShares() int64 {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
 
-	sum := int32(0)
+	sum := int64(0)
 	for _, share := range p.SecretShares {
 		sum += share
 		share = 0
@@ -292,7 +292,7 @@ func (p *Peer) sumShares() int32 {
 }
 
 // DIAL THE HOSPITAL AND SEND ACCUMULATED DATA
-func (p *Peer) handleSendToHospital(data int32) {
+func (p *Peer) handleSendToHospital(data int64) {
 	conn, err := grpc.Dial("localhost:5000",
 		grpc.WithTransportCredentials(credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
 	if err != nil {
@@ -346,13 +346,13 @@ func promptInput(prompt string) string {
 	return strings.TrimSpace(input)
 }
 
-func promptSecretInput(prompt string) (int32, error) {
+func promptSecretInput(prompt string) (int64, error) {
 	input := promptInput(prompt)
 	secret, err := strconv.Atoi(input)
 	if err != nil {
 		return 0, err
 	}
-	return int32(secret), nil
+	return int64(secret), nil
 }
 
 func (p *Peer) welcomePrompt() {
