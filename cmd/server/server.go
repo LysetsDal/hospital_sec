@@ -59,5 +59,12 @@ func (h *HospitalServer) SendToHospital(ctx context.Context, in *pb.HospitalMess
 	defer h.ML_DATA_MU.Unlock()
 	h.ML_DATA = in.AnonymousAccumulatedData
 	log.Printf("Hospital ML_DATA set: %d", h.ML_DATA)
+	// test
+	secretUnModded := h.reconstructSecret(h.ML_DATA)
+	log.Printf("Hospital mod secret: %d", secretUnModded)
 	return &pb.HospitalResponse{DataReceived: true}, nil
+}
+
+func (h *HospitalServer) reconstructSecret(data int64) int64 {
+	return data % 41
 }

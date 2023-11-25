@@ -161,7 +161,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int64) {
 	}
 
 	// SPLIT SECRET INTO SHARES
-	shares, err := util.SplitSecret(secret, num_peers)
+	shares, err := util.SplitSecretMod(secret, 3)
 	if err != nil {
 		log.Printf("Error splitting secret into shares %v\n", err)
 		return
@@ -205,7 +205,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int64) {
 
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	shares, err := util.SplitSecret(30, int64(len(p.Peers))) // <-- SECRET IS HARDCODED TO 30 PT.
+	shares, err := util.SplitSecretMod(30, int64(len(p.Peers))) // <-- SECRET IS HARDCODED TO 30 PT.
 	if err != nil {
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
