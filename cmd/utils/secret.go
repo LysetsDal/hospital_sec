@@ -6,66 +6,64 @@ import (
 	"math/big"
 )
 
-// GENERATES SHARES FOR A GIVEN SECRET USING ADDITIVE SECRET SHARING.
-func SplitSecret(secret, num_shares int64) ([]int64, error) {
-	if num_shares <= 1 {
-		return nil, fmt.Errorf("number of shares must be greater than 1")
-	}
+const FIELDSIZE int64 = 100000007
 
-	if secret < 0 {
-		return nil, fmt.Errorf("secret must be non-negative")
-	}
 
-	shares := make([]int64, num_shares - 1)
-	var sum int64 = 0
-
-	// GENERATES RANDOM SHARES FOR ALL BUT THE LAST ONE
-	for i := int64(0); i < num_shares-1; i++ {
-		share := randomShare(secret - sum)
-
+func GetAdditiveShares(secret, N, fieldSize int64) ([]int64, error) {
+	// Generate N-1 shares randomly
+	shares := make([]int64, N-1)
+	for i := int64(0); i < N-1; i++ {
+		share, err := randomShare(fieldSize)
+		if err != nil {
+			return nil, fmt.Errorf("error generating random share: %v", err)
+		}
 		shares[i] = share
-		sum += share
 	}
 
-	// THE LAST SHARE ENSURES THAT THE SUM EQUALS THE SECRET
-	shares[num_shares-1] = secret - sum
-
-	return shares, nil
-}
-
-// GENERATES A RANDOM SHARE WITHIN THE MAX INT RANGE
-func randomShare(max_share int64) int64 {
-	if max_share <= 0 {
-		return 0
+	// Append the final share by subtracting all shares from the secret
+	// Modulo is done with fieldSize to ensure the share is within the finite field { 0 .. FIELDSIZE };
+	finalShare := (secret - sum(shares)) % fieldSize
+	if finalShare < 0 {
+		finalShare += fieldSize
 	}
-
-	max_share_big_int := big.NewInt(int64(max_share))
-	share, _ := rand.Int(rand.Reader, max_share_big_int)
-
-	return share.Int64()
-}
-
-func SplitSecretMod(secret, num_shares int64) ([]int64, error) {
-	if num_shares <= 1 {
-		return nil, fmt.Errorf("number of shares must be greater than 1")
-	}
-
-	if secret < 0 {
-		return nil, fmt.Errorf("secret must be non-negative")
-	}
-
-	shares := make([]int64, num_shares - 1)
-
-	var sum int64 = 0
-	for i := int64(0); i < num_shares-1; i++ {
-		share := randomShare(secret - sum)
-
-		shares[i] = share
-		sum += share
-	}
-
-	finalShare := (secret - sum) % 41
 	shares = append(shares, finalShare)
 
 	return shares, nil
+}
+
+// Generates a random share within the specified field size
+func randomShare(fieldSize int64) (int64, error) {
+	if fieldSize <= 0 {
+		return 0, fmt.Errorf("fieldSize must be greater than 0")
+	}
+
+	maxShare := big.NewInt(int64(fieldSize))
+	share, err := rand.Int(rand.Reader, maxShare)
+	if err != nil {
+		fmt.Printf("error generating random number %s\n", err)
+	}
+
+	return share.Int64(), nil
+}
+
+func sum(values []int64) int64 {
+	result := int64(0)
+	for _, value := range values {
+		result += value
+	}
+	return result
+}
+
+// Helper function to handle modulo for negative numbers
+func mod(a, b int64) int64 {
+	result := a % b
+	if result < 0 {
+		result += b
+	}
+	return result
+}
+
+// Hospital can reconstruct secret with this
+func ReconstructSecret(data int64) int64 {
+	return mod(data, FIELDSIZE)
 }

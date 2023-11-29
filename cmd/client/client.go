@@ -78,13 +78,14 @@ func (p *Peer) StartListening(certFile, keyFile string) {
 	pb.RegisterPeer2PeerServer(grpcServer, p)
 	reflection.Register(grpcServer)
 
-	// START LISTENING
+	// Start listening for connections
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 	log.Printf("New Peer listening on: %s", p.ListenAddr)
 }
 
+// Read logic of peer 
 func (p *Peer) readLoop() {
 	p.welcomePrompt()
 	time.Sleep(200 * time.Millisecond)
@@ -97,7 +98,7 @@ func (p *Peer) readLoop() {
 			text := promptInput("Enter message: \n")
 			p.HandleSendMessageToPeer(name, text)
 			continue
-		// SECRET SHARING
+		// SECRET SHARING 
 		case "secret":
 			secret, _ := promptSecretInput("Enter secret: \n")
 			// Sum and send share to peers
@@ -152,7 +153,7 @@ func (p *Peer) SendMessageToPeer(ctx context.Context, in *pb.PeerMessage) (*pb.P
 }
 
 // ======= SECRET SHARE-ING =========
-// PERSON CALLING THIS INITIATES SECRET SHARE WITHIN PEER-2PEER CLUSTER
+// Person calling this initiates secret sharing within the peer-2-peer network
 func (p *Peer) HandleInitiateSecretShare(secret int64) {
 	num_peers := int64(len(p.Peers))
 	if num_peers == 0 {
@@ -160,22 +161,23 @@ func (p *Peer) HandleInitiateSecretShare(secret int64) {
 		return
 	}
 
-	// SPLIT SECRET INTO SHARES
-	shares, err := util.SplitSecretMod(secret, 3)
+	// Split secret into shares (from util.secret module)
+	shares, err := util.GetAdditiveShares(secret, 3, util.FIELDSIZE)
 	if err != nil {
 		log.Printf("Error splitting secret into shares %v\n", err)
 		return
 	}
 
 	p.populateSecretsMap(shares)
+	// p.printSecrets() // <-- Enable Debug prints
 
-	// SEND A SHARE OF THE SECRET TO ALL PEERS:
+	// Send a share of the secret to all peers:
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
 
 	for p_name, secret := range p.SecretShares {
 		if p_name == p.Name {
-			continue // (DON'T SEND TO SELF)
+			continue // (Don't send to self!)
 		}
 
 		target_ip := p.PeerDNS[p_name]
@@ -196,7 +198,7 @@ func (p *Peer) HandleInitiateSecretShare(secret int64) {
 			return
 		}
 
-		// INSERT THIS NEW VALUE INTO THE CORRESPONDING SECRETS ARRAY:
+		// Insert this new value into the corresponding secrets array:
 		p.SecretShares[res.FromPeer] = res.Share
 		log.Printf("Peer {%s}: Share {%d} received\n", res.FromPeer, res.Share)
 	}
@@ -205,15 +207,16 @@ func (p *Peer) HandleInitiateSecretShare(secret int64) {
 
 func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
 	log.Printf("Message from {%s} - Share: %d\n", in.FromPeer, in.Share)
-	shares, err := util.SplitSecretMod(30, int64(len(p.Peers))) // <-- SECRET IS HARDCODED TO 30 PT.
+	shares, err := util.GetAdditiveShares(100, int64(len(p.Peers)), util.FIELDSIZE) // <-- SECRET IS HARDCODED
 	if err != nil {
 		log.Printf("Error splitting secret %v", err)
 		return nil, err
 	}
 
 	p.populateSecretsMap(shares)
+	// p.printSecrets() // <-- Enable Debug prints
 
-	// STORE OWN COMPUTED SHARE OF THE PERSON SENDING YOU A SHARE
+	// Store own computed share of person sending you a share (so it isn't overwritten)
 	old_share := p.SecretShares[in.FromPeer]
 
 	target_ip := p.PeerDNS[in.FromPeer]
@@ -228,14 +231,14 @@ func (p *Peer) InitiateSecretShare(ctx context.Context, in *pb.SecretMessage) (*
 }
 
 func (p *Peer) HandleSendAddedOutputToPeer() {
-	share_sum := p.sumShares() // SUM AND SAVE SHARES
+	share_sum := p.sumShares() // Sum and save shares
 
 	out := &pb.SecretMessage{
 		FromPeer: p.Name,
 		Share:    share_sum,
 	}
 
-	// SEND TO ALL OTHER PEERS
+	// Send to all other peers
 	for p_name := range p.SecretShares {
 		if p_name == p.Name {
 			continue
@@ -249,13 +252,12 @@ func (p *Peer) HandleSendAddedOutputToPeer() {
 			log.Printf("Error exchanging Added output with peer %s: %v\n", target_ip, err)
 			return
 		}
-		p.SecretShares[res.FromPeer] = res.Share // SAVE OTHER PEERS ACCUMULATED OUTPUTS
+		p.SecretShares[res.FromPeer] = res.Share // Save other peers accumulated output
 		log.Printf("Peer{%s} - Added Output: %d received\n", res.FromPeer, res.Share)
 	}
 }
 
 func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) (*pb.SecretMessage, error) {
-	log.Printf("Message from {%s} - Added Output: %d\n", in.FromPeer, in.Share)
 	share_sum := p.sumShares()
 	p.SecretShares[in.FromPeer] = in.Share
 
@@ -264,7 +266,7 @@ func (p *Peer) SendAddedOutputToPeer(ctx context.Context, in *pb.SecretMessage) 
 
 // =============== UTILITY FUNCTIONS ====================
 
-// MAP THE NAME OF A PEER TO A SHARE IN THE SECRETS MAP
+// Map name of a peer to a share in sercrets map
 func (p *Peer) populateSecretsMap(shares []int64) {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
@@ -276,7 +278,7 @@ func (p *Peer) populateSecretsMap(shares []int64) {
 	}
 }
 
-// SUM AND SAVE THE SHARES IN THE MAP
+// SUM and SAVE shares in the map
 func (p *Peer) sumShares() int64 {
 	p.SecretMU.Lock()
 	defer p.SecretMU.Unlock()
@@ -291,7 +293,7 @@ func (p *Peer) sumShares() int64 {
 	return sum
 }
 
-// DIAL THE HOSPITAL AND SEND ACCUMULATED DATA
+// Dial the hospital and send accumulated data
 func (p *Peer) handleSendToHospital(data int64) {
 	conn, err := grpc.Dial("localhost:5000",
 		grpc.WithTransportCredentials(credentials.NewTLS(util.LoadTLSConfig(*certFile, *keyFile))))
@@ -310,7 +312,8 @@ func (p *Peer) handleSendToHospital(data int64) {
 	log.Printf("Hospital received data: %v", res.DataReceived)
 }
 
-// SIMULATED DNS FOR THE PEERS (LOOKUP TABLE)
+
+// Simulated DNS for the peers 
 func (p *Peer) initPeerDNS() {
 	peers := map[string]string{
 		"alice":   "localhost:8080",

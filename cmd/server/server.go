@@ -50,21 +50,18 @@ func (h *HospitalServer) Start() error {
 	}
 
 	fmt.Printf("Starting new HospitalServer on: %s\n", h.ListenAddr)
-	return grpcServer.Serve(lis)
+	return grpcServer.Serve(lis)  // <-- This is a Blocking call 
 }
 
-// WRITES TO DATA (THE VALUE IS OVERWRITTEN EACH TIME FOR DEMONSTRATION PURPOSES)
+// Writes the data to its 'Machine Learning database' 
+// (THE VALUE IS OVERWRITTEN EACH TIME FOR DEMONSTRATION PURPOSES!)
 func (h *HospitalServer) SendToHospital(ctx context.Context, in *pb.HospitalMessage) (*pb.HospitalResponse, error) {
 	h.ML_DATA_MU.Lock()
 	defer h.ML_DATA_MU.Unlock()
 	h.ML_DATA = in.AnonymousAccumulatedData
-	log.Printf("Hospital ML_DATA set: %d", h.ML_DATA)
+	log.Printf("Hospital Machine-learning data set: %d", h.ML_DATA)
 	// test
-	secretUnModded := h.reconstructSecret(h.ML_DATA)
+	secretUnModded := util.ReconstructSecret(h.ML_DATA)
 	log.Printf("Hospital mod secret: %d", secretUnModded)
 	return &pb.HospitalResponse{DataReceived: true}, nil
-}
-
-func (h *HospitalServer) reconstructSecret(data int64) int64 {
-	return data % 41
 }
