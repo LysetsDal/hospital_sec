@@ -54,7 +54,7 @@ func (h *HospitalServer) Start() error {
 }
 
 // Writes the data to its 'Machine Learning database' 
-// (THE VALUE IS OVERWRITTEN EACH TIME FOR DEMONSTRATION PURPOSES!)
+// VALUE IS OVERWRITTEN FOR EASIER CONTROL 
 func (h *HospitalServer) SendToHospital(ctx context.Context, in *pb.HospitalMessage) (*pb.HospitalResponse, error) {
 	h.ML_DATA_MU.Lock()
 	defer h.ML_DATA_MU.Unlock()
